@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>2-Person Secure Chat</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#111; color:#fff; text-align:center; }
+    #chat-box { height: 300px; overflow-y: auto; border:1px solid #444; padding:10px; margin:15px auto; background:#222; width:90%; max-width:500px; }
+    .msg { margin:5px 0; padding:6px; background:#333; border-radius:5px; text-align:left; }
+    .me { background:#0066cc; }
+    input, button { padding:10px; margin:5px; border:none; border-radius:5px; }
+    input { width:70%; }
+    button { background:#28a745; color:white; cursor:pointer; }
+    #codeBox { background:#333; padding:10px; border-radius:5px; margin:10px auto; width:fit-content; font-size:18px; }
+  </style>
+</head>
+<body>
+  <h1>🔑 2-Person Private Chat</h1>
+  <div id="setup">
+    <p>Your Chat Code:</p>
+    <div id="codeBox"></div>
+    <p>Or enter code to join a chat:</p>
+    <input id="joinCode" placeholder="Enter chat code">
+    <button onclick="joinChat()">Join</button>
+  </div>
+
+  <div id="chatUI" style="display:none;">
+    <h2>Chat Room: <span id="roomLabel"></span></h2>
+    <div id="chat-box"></div>
+    <input id="msgInput" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <!-- Firebase scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDIPGThL5UPXWa7jkDcofhO76P_ClJ3ADQ",
+      authDomain: "real-time-chat-9d68c.firebaseapp.com",
+      databaseURL: "https://real-time-chat-9d68c-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "real-time-chat-9d68c",
+      storageBucket: "real-time-chat-9d68c.appspot.com",
+      messagingSenderId: "932699380902",
+      appId: "1:932699380902:web:c8e54891450f7ca5cba867"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    let db = firebase.database();
+    let roomCode = null;
+    let userId = "U" + Math.random().toString(36).substr(2,6); // unique id per user
+
+    // Generate a random chat code
+    function generateCode(length=6) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let code = "";
+      for (let i=0; i<length; i++) code += chars.charAt(Math.floor(Math.random()*chars.length));
+      return code;
+    }
+
+    // Show generated code
+    const myCode = generateCode();
+    document.getElementById("codeBox").innerText = myCode;
+
+    // If user shares/join chat
+    function joinChat() {
+      const inputCode = document.getElementById("joinCode").value.trim() || myCode;
+      if (inputCode === "") return alert("Enter or share a code!");
+      roomCode = inputCode;
+
+      document.getElementById("setup").style.display = "none";
+      document.getElementById("chatUI").style.display = "block";
+      document.getElementById("roomLabel").innerText = roomCode;
+
+      startChatRoom();
+    }
+
+    function startChatRoom() {
+      const chatRef = db.ref("chats/" + roomCode);
+
+      chatRef.on("child_added", function(snapshot) {
+        const msg = snapshot.val();
+        const div = document.createElement("div");
+        div.classList.add("msg");
+        if (msg.user === userId) div.classList.add("me");
+        div.innerText = msg.text;
+        document.getElementById("chat-box").appendChild(div);
+        document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
+      });
+    }
+
+    function sendMessage() {
+      const msg = document.getElementById("msgInput").value;
+      if (msg.trim() === "" || !roomCode) return;
+      const chatRef = db.ref("chats/" + roomCode);
+      chatRef.push().set({ text: msg, user: userId, time: Date.now() });
+      document.getElementById("msgInput").value = "";
+    }
+  </script>
+</body>
+</html>
